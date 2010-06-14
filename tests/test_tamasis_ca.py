@@ -19,16 +19,22 @@ projection = Projection(pacs, resolution=3.2, oversampling=False, npixels_per_sa
 model = projection
 # naive map
 backmap = model.transpose(tod)
+# coverage map
+weights = model.transpose(tod.ones(tod.shape))
+# mask on map
+mask = weights == 0
+M = lo.mask(mask)
 # transform to lo
-P = lo.ndsubclass(backmap, tod, matvec=model.direct, rmatvec=model.transpose)
+#P = lo.ndsubclass(backmap, tod, matvec=model.direct, rmatvec=model.transpose)
+P = lo.aslinearoperator(model.aslinearoperator())
 # full model
-A = C * P
+A = C * P * M.T
 # priors
-Dx = lo.diff(backmap.shape, axis=0, dtype=np.float64)
-Dy = lo.diff(backmap.shape, axis=1, dtype=np.float64)
-#Dw = lo.pywt_lo.wavedec2(backmap.shape, "haar")
+Dx = lo.diff(backmap.shape, axis=0, dtype=np.float64) * M.T
+Dy = lo.diff(backmap.shape, axis=1, dtype=np.float64) * M.T
+Dw = lo.pywt_lo.wavelet2(backmap.shape, "haar") * M.T
 # inversion
 y = ctod.flatten()
-x, conv = lo.rls(A, (Dx, Dy), (1e1, 1e1),  y)
+x, conv = lo.rls(A, (Dx, Dy, Dw), (1e1, 1e1, 1e1),  y)
 sol = backmap.zeros(backmap.shape)
-sol[:] = x.reshape(sol.shape)
+sol[mask == 0] = x
