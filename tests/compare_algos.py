@@ -31,30 +31,27 @@ Dy = lo.diff(backmap.shape, axis=1)
 y = (masking_tod.T * tod).flatten()
 # algos
 algos = [spl.cg, spl.cgs, spl.bicg, spl.bicgstab]
-models = [P.T * P, 
-          P.T * P + Dx.T * Dx + Dy.T * Dy,
-          M * P.T * P * M.T,
-          M * (P.T * P  + Dx.T * Dx + Dy.T * Dy) * M.T,
-          ]
+models = [P.T * P,  P.T * P + Dx.T * Dx + Dy.T * Dy]
 n_iterations = []
 resid = []
 for algo in algos:
     for A in models:
-        callback = lo.CallbackFactory(verbose=True)
-        is_masked = A.shape[0] == 5136
-        if is_masked:
-            b = M * P.T * y
-            M1 = M * M0 * M.T
-        else:
-            b = P.T * y
-            M1 = M0
-        x, conv = algo(A, b, M=M1, maxiter=1000, callback=callback)
-        if conv == 0:
-            n_iterations.append(callback.iter_[-1])
-        else:
-            # if convergence not achieve output a nan
-            n_iterations.append(np.nan)
-        resid.append(callback.resid[-1])
+        for is_masked in (False, True):
+            callback = lo.CallbackFactory(verbose=True)
+            if is_masked:
+                A = M * A * M.T
+                b = M * P.T * y
+                M1 = M * M0 * M.T
+            else:
+                b = P.T * y
+                M1 = M0
+            x, conv = algo(A, b, M=M1, maxiter=1000, callback=callback)
+            if conv == 0:
+                n_iterations.append(callback.iter_[-1])
+            else:
+                # if convergence not achieve output a nan
+                n_iterations.append(np.nan)
+            resid.append(callback.resid[-1])
 
 n_iterations = np.asarray(n_iterations).reshape((len(models), len(algos)))
 resid = np.asarray(resid).reshape((len(models), len(algos)))
