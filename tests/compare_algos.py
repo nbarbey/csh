@@ -49,9 +49,9 @@ for algo in algos:
             if conv == 0:
                 n_iterations.append(callback.iter_[-1])
             else:
-                # if convergence not achieve output a nan
+                # if convergence not achieved output a nan
                 n_iterations.append(np.nan)
             resid.append(callback.resid[-1])
 
-n_iterations = np.asarray(n_iterations).reshape((len(models), len(algos)))
-resid = np.asarray(resid).reshape((len(models), len(algos)))
+n_iterations = np.asarray(n_iterations).reshape((2 * len(models), len(algos))).T
+resid = np.asarray(resid).reshape((2 * len(models), len(algos))).T
