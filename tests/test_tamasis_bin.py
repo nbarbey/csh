@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import tamasis as tm
 import csh
+import csh.score
 import numpy as np
 import lo
 import scipy.sparse.linalg as spl
@@ -37,5 +38,6 @@ sol = backmap.zeros(backmap.shape)
 sol[:] = x.reshape(sol.shape)
 
 # L2 score
-bin_score = csh.score(A.T * A)
+Md = (A.T * A).todense()
+bin_score = csh.score.score(Md)
 print("score of binning3d strategy " + str(bin_score))
