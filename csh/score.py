@@ -10,6 +10,9 @@ def score(A):
         B = A.todense()
     else:
         B = np.asarray(A)
+    # find eigenvalues
     w, v = npl.eigh(B)
+    # remove null space
+    w = w[np.where(w != 0)]
     logw = np.log(w)
     return np.sum(logw)
