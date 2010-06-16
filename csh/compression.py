@@ -13,9 +13,9 @@ def cs(shape, factor):
     H = lo.fht(shape, axes=0)
     # mask
     start_ind = np.resize(np.arange(factor), shape[0])
-    mask = np.zeros(shape)
+    mask = np.ones(shape)
     for i in xrange(mask.shape[0]):
-        mask[i, start_ind[i]::factor] = 1.
+        mask[i, start_ind[i]::factor] = 0.
     M = lo.mask(mask, dtype=np.float64)
     C = M * H
     return C
