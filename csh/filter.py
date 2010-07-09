@@ -6,6 +6,7 @@ def kernel_from_tod(tod, length=1000):
     """Defines Noise covariance kernel from a data set
     """
     kernel = np.zeros((tod.shape[0], np.floor(length/2) + 1))
+    ftod = np.zeros((tod.shape[0], np.floor(length/2) + 1))
     # divide tod in chunks of length
     n = int(np.floor(tod.shape[1] / length))
     # compute power spectrum for each chunk and sum
@@ -13,8 +14,9 @@ def kernel_from_tod(tod, length=1000):
         iinf = i * length
         isup = (i + 1) * length
         chunk = tod[:, iinf:isup]
-        ftod = np.fft.rfft(chunk, axis=1)
-        kernel += np.abs(ftod) ** 2
+        ftod += np.fft.rfft(chunk, axis=1)
+
+    kernel = np.abs(ftod) ** 2
     # zero padding
     #zero_pad = np.zeros((tod.shape[0], tod.shape[1] - kernel.shape[1]))
     #kernel = np.concatenate((kernel, zero_pad), axis=1)
