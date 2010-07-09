@@ -13,6 +13,7 @@ def score(A):
     # find eigenvalues
     w, v = npl.eigh(B)
     # remove null space
-    w = w[np.where(w != 0)]
     logw = np.log(w)
+    logw[np.isnan(logw)] = 0.
+    logw[np.isinf(logw)] = 0.
     return np.sum(logw)
