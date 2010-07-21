@@ -21,6 +21,9 @@ sol = []
 # find a map for each compression and save it
 for comp in compressions:
     sol.append(csh.rls(filenames, compression=comp, hypers=hypers,
-                       filtering=filtering, filter_length=filter_length))
+                       deglitch=False,
+                       filtering=filtering, filter_length=filter_length,
+                       algo=csh.lo.acg
+                       ))
     fname = os.path.join(output_path, pre + comp + ext)
     sol[-1].writefits(fname)
