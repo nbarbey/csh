@@ -5,7 +5,12 @@ import lo
 
 def averaging(shape, factor):
     """Averaging compression mode"""
-    return lo.binning(shape, factor=8, axis=1, dtype=np.float64)
+    return lo.binning(shape, factor=factor, axis=1, dtype=np.float64)
+
+def decimate_temporal(shape, factor):
+    mask = np.ones(shape)
+    mask[:, 0::factor] = 0.
+    return lo.mask(mask)
 
 def cs(shape, factor):
     """ Compressed sensing compression mode"""

@@ -5,55 +5,73 @@ import tamasis as tm
 import lo
 import csh
 
-def rls(filename, compression=None, factor=8, hypers=(1., 1.), 
-        covariance=True, map_mask=True, deglitch=True, filtering=True, 
-        filter_length=10000, model_only=False, algo=lo.rls):
+def rls(filename, compression=None, factor=4, hypers=(1., 1.),
+        deltas=(1e-8, 1e-8), header=None, wavelet=None,
+        covariance=True, map_mask=True, deglitch=True, bpj=False,
+        deglitch_filter_length=10, filtering=True,
+        filter_length=10000, decompression=True, model_only=False,
+        algo=lo.rls, optimizer=lo.spl.bicgstab, maxiter=None, tol=1e-5):
     """ Performs regularized least square map making
     """
     # load data and projection matrix
-    tod, projection, header, obs = load_data(filename)
+    tod, projection, header0, obs = load_data(filename)
+    if header is None:
+        header = header0
     model = projection
     # define compression
-    if compression is None or compression == "":
+    if compression is None or compression == "" or compression == "no":
         C = lo.identity(2 * (tod.size, ))
         factor = 1
     elif compression == "ca":
         C = csh.averaging(tod.shape, factor=factor)
     elif compression == "cs":
         C = csh.cs(tod.shape, factor=factor)
+    elif compression == "dt":
+        C = csh.decimate_temporal(tod.shape, factor)
     # compress data
     ctod = compress(tod, C, factor)
-    # uncompress for preprocessing
-    uctod = uncompress(ctod, C, factor)
-    # XXX need mask ...
-    uctod.mask = tod.mask
     # deglitching
     if deglitch is True:
-        uctod.mask = tm.deglitch_l2mad(uctod, projection)
-        masking = tm.Masking(uctod.mask)
-        model = masking * projection
+        # uncompress for preprocessing
+        uctod = uncompress(ctod, C, factor)
+        # XXX need mask ...
+        uctod.mask = tod.mask
+        uctod = tm.filter_median(uctod, length=deglitch_filter_length)
+        uctod_mask = tm.deglitch_l2mad(uctod, projection)
+        uctod = uncompress(ctod, C, factor)
+        uctod.mask = uctod_mask
+        #masking = tm.Masking(uctod.mask)
+        #model = masking * projection
         # remove glitches by interpolation for the covariance
-        #uctod = tm.interpolate_linear(uctod)
+        uctod = tm.interpolate_linear(uctod)
         #uctod = uctod * uctod.mask
-    # compress back the data
-    ctod = compress(uctod, C, factor)
+        # compress back the data
+        ctod = compress(uctod, C, factor)
     # median filtering
     if filtering is True:
         ctod = tm.filter_median(ctod, length=filter_length / factor)
     # model with compression
     M = lo.aslinearoperator(model.aslinearoperator())
-    M = C * M
+    if decompression is True:
+        M = C * M
+    else:
+        # ad-hoc compression model (assumes wrongly no compression)
+        C0 = csh.decimate_temporal(tod.shape, factor=factor)
+        M = C0 * M
     # noise covariance
     if covariance:
         cov = noise_covariance(ctod, obs)
         S = lo.aslinearoperator(cov.aslinearoperator())
+        #S = lo.identity(2 * (ctod.size,))
     else:
         S = None
     # backprojection
-    backmap = (M.T * ctod.flatten()).reshape(projection.shapein)
+    backmap = tm.Map((M.T * ctod.flatten()).reshape(projection.shapein))
     # priors
     Ds = [lo.diff(backmap.shape, axis=0, dtype=np.float64),]
     Ds.append(lo.diff(backmap.shape, axis=1, dtype=np.float64))
+    if wavelet is not None:
+        Ds.append(lo.pywt_lo.wavelet2(backmap.shape, wavelet, level=3, dtype=np.float64))
     # weights
     weights = projection.transpose(tod.ones(tod.shape))
     # masking the map
@@ -61,10 +79,13 @@ def rls(filename, compression=None, factor=8, hypers=(1., 1.),
         MM = lo.mask(weights == 0)
         M = M * MM.T
         Ds = [D * MM.T for D in Ds]
-    # inversion
+    # to use the defined model for other purposes
     if model_only:
         return M
-    x, conv = algo(M, Ds, hypers, ctod.flatten(), S=S, optimizer=lo.spl.cg)
+    # inversion
+    #x, conv = algo(M, Ds, hypers, ctod.flatten(), deltas=deltas, S=S,
+    #               optimizer=optimizer, maxiter=maxiter, tol=tol)
+    x, conv = algo(M, Ds, hypers, ctod.flatten(), )
     # reshape map
     sol = tm.Map(np.zeros(backmap.shape))
     if map_mask:
@@ -72,7 +93,12 @@ def rls(filename, compression=None, factor=8, hypers=(1., 1.),
     else:
         sol[:] = x.reshape(sol.shape)
     sol.header = header
-    return sol
+    if bpj:
+        backmap /= weights
+        backmap[np.isnan(backmap)]= 0.
+        return sol, backmap
+    else:
+        return sol
 
 def compress(tod, C, factor):
     ctod = (C * tod.flatten())
@@ -120,4 +146,5 @@ def noise_covariance(tod, obs):
                          right=length - tod.nsamples - invNtt.ncorrelations)
     masking = tm.Masking(tod.mask)
     cov = masking * padding.T * fft.T * invNtt * fft * padding * masking
+#    cov = padding.T * fft.T * invNtt * fft * padding 
     return cov

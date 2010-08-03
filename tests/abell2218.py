@@ -8,7 +8,8 @@ from csh import *
 datadir = os.getenv('CSH_DATA')
 ids = ['1342184518', '1342184519', '1342184596', '1342184597', 
        '1342184598', '1342184599']
-filenames = [datadir + id_str + '_blue_PreparedFrames.fits' for id_str in ids]
+filenames = [os.path.join(datadir, id_str + '_blue_PreparedFrames.fits')
+             for id_str in ids]
 pacs = PacsObservation(filename=filenames, 
                        fine_sampling_factor=1, keep_bad_detectors=False)
 # get header from altieri maps
