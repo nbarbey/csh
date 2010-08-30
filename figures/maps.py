@@ -46,8 +46,21 @@ for i, fname in enumerate(fname_ext):
     plt.xticks(visible=False)
     plt.yticks(visible=False)
     im.set_clim([0., .3])
-    im2.set_clim([0., .3])
+    im2.set_clim([0., .15])
     mark_inset(grid[i], axins, loc1=2, loc2=4, fc="none", ec="0.5")
+
+fontsize=20
+posx = 10
+posy = 170
+grid[-1].text(posx, posy, "(a): PL", fontsize=fontsize, color="black")
+posy -= 25
+grid[-1].text(posx, posy, "(b): PLI", fontsize=fontsize, color="black")
+posy -= 25
+grid[-1].text(posx, posy, "(c): ACI", fontsize=fontsize, color="black")
+posy -= 25
+grid[-1].text(posx, posy, "(d): HCI", fontsize=fontsize, color="black")
+posy -= 25
+grid[-1].text(posx, posy, "(e): NOC", fontsize=fontsize, color="black")
 
 grid[0].set_xticks(())
 grid[0].set_yticks(())
