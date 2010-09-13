@@ -37,16 +37,16 @@ def rls(filename, compression=None, factor=4, hypers=(1., 1.),
         # XXX need mask ...
         uctod.mask = tod.mask
         uctod = tm.filter_median(uctod, length=deglitch_filter_length)
-        uctod_mask = tm.deglitch_l2mad(uctod, projection)
-        uctod = uncompress(ctod, C, factor)
-        uctod.mask = uctod_mask
-        #masking = tm.Masking(uctod.mask)
-        #model = masking * projection
+        #uctod_mask = tm.deglitch_l2mad(uctod, projection)
+        #uctod = uncompress(ctod, C, factor)
+        #uctod.mask = uctod_mask
+        masking = tm.Masking(uctod.mask)
+        model = masking * projection
         # remove glitches by interpolation for the covariance
-        uctod = tm.interpolate_linear(uctod)
+        #uctod = tm.interpolate_linear(uctod)
         #uctod = uctod * uctod.mask
         # compress back the data
-        ctod = compress(uctod, C, factor)
+        #ctod = compress(uctod, C, factor)
     # median filtering
     if filtering is True:
         ctod = tm.filter_median(ctod, length=filter_length / factor)
@@ -83,9 +83,10 @@ def rls(filename, compression=None, factor=4, hypers=(1., 1.),
     if model_only:
         return M
     # inversion
-    #x, conv = algo(M, Ds, hypers, ctod.flatten(), deltas=deltas, S=S,
+    #x, conv = algo(M, ctod.flatten(), Ds=Ds, hypers=hypers, deltas=deltas, S=S,
     #               optimizer=optimizer, maxiter=maxiter, tol=tol)
-    x, conv = algo(M, Ds, hypers, ctod.flatten(), )
+    x, conv = algo(M, ctod.flatten(), Ds=Ds, hypers=hypers, deltas=deltas,
+                   maxiter=maxiter, tol=tol)
     # reshape map
     sol = tm.Map(np.zeros(backmap.shape))
     if map_mask:
