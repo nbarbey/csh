@@ -10,23 +10,24 @@ filenames = [datadir + '/1342185454_blue_PreparedFrames.fits[5954:67614]',
 # no compression
 output_path = os.path.join(os.getenv('HOME'), 'data', 'csh', 'output',)
 # compression modes
-compressions = ["", "ca", "cs"]
+#compressions = ["ca", "cs", ""]
 factor=8
-#compressions = ["ca"]
+compressions = ["ca"]
 # median filter length
 deglitch=True
 covariance=False
 filtering = True
-filter_length = 10000
-#hypers = (1e9, 1e9)
-hypers = (1e0, 1e0)
+filter_length = 1000
+hypers = (1e7, 1e7)
+#hypers = (1e2, 1e2)
 deltas = (None, 1e-8, 1e-8)
 algo = lo.hacg
 tol = 1e-5
+maxiter = 30
 #wavelet = 'haar'
 wavelet = None
 ext = ".fits"
-pre = "ngc6946_no_huber_"
+pre = "ngc6946_huber_"
 # to store results
 sol = []
 # define same header for all maps
@@ -39,7 +40,7 @@ del tod, projection, obs
 for comp in compressions:
     sol.append(csh.rls(filenames, compression=comp, hypers=hypers, 
                        header=header, factor=factor, algo=algo,
-                       deltas=deltas, wavelet=wavelet, tol=tol,
+                       deltas=deltas, wavelet=wavelet, tol=tol, maxiter=maxiter,
                        deglitch=deglitch, covariance=covariance,
                        filtering=filtering, filter_length=filter_length))
     fname = os.path.join(output_path, pre + comp + ext)
