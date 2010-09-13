@@ -8,7 +8,7 @@ from mpl_toolkits.axes_grid import AxesGrid
 
 # data
 datadir = os.getenv('CSH_DATA')
-filename = datadir + '../lowfreq/1342182424_blue_level0Frames.fits'
+filename = datadir + '/../lowfreq/1342182424_blue_level0Frames.fits'
 
 data = pyfits.fitsopen(filename)[1].data[..., 50000:60000]
 idx = 2000
