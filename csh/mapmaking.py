@@ -14,9 +14,7 @@ def rls(filename, compression=None, factor=4, hypers=(1., 1.),
     """ Performs regularized least square map making
     """
     # load data and projection matrix
-    tod, projection, header0, obs = load_data(filename)
-    if header is None:
-        header = header0
+    tod, projection, header, obs = load_data(filename, header=header)
     model = projection
     # define compression
     if compression is None or compression == "" or compression == "no":
