@@ -18,6 +18,7 @@ datadir = os.getenv('CSH_DATA')
 filenames = [datadir + '/1342185454_blue_PreparedFrames.fits[6056:6057]',
 #             datadir + '/1342185455_blue_PreparedFrames.fits[6056:6056]'
              ]
+
 # no compression
 output_path = os.path.join(os.getenv('HOME'), 'data', 'csh', 'output',)
 # compression modes
@@ -45,7 +46,7 @@ weights = projection.transpose(tod.ones(tod.shape))
 del tod, projection, obs
 # choose a small portion of the map (in the center)
 # center the new map
-n = 32
+n = 16
 header['CRPIX1'] -= header['NAXIS1'] / 2 - n / 2
 header['CRPIX2'] -= header['NAXIS2'] / 2 - n / 2
 # correct for wrong centering
@@ -63,8 +64,10 @@ pipe = bpj / weights
 
 # get the model dense matrix
 P = lo.aslinearoperator(projection.aslinearoperator())
+<<<<<<< HEAD:figures/matrix.py
 Pd = P.todense()
 #PtPd = (P.T * P).todense()
 
 plt.imshow(Pd, interpolation="nearest")
 plt.show()
+#PtPd = (P.T * P).todense()

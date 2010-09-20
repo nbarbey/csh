@@ -7,24 +7,17 @@ import os
 import copy
 import lo
 import csh
-<<<<<<< HEAD:figures/projection_matrix.py
-import matplotlib.pylab as plt
 
 # define data set
 datadir = os.getenv('CSH_DATA')
-#filenames = [datadir + '/1342185454_blue_PreparedFrames.fits[5954:67614]',
-#             datadir + '/1342185455_blue_PreparedFrames.fits[5954:67615]']
-#filenames = [datadir + '/1342185454_blue_PreparedFrames.fits[6056:6063]',
-#             datadir + '/1342185455_blue_PreparedFrames.fits[6056:6063]']
-filenames = [datadir + '/1342185454_blue_PreparedFrames.fits[6056:6057]',
-#             datadir + '/1342185455_blue_PreparedFrames.fits[6056:6056]'
-             ]
+filenames = [datadir + '/1342185454_blue_PreparedFrames.fits[10000:10032]',
+             datadir + '/1342185455_blue_PreparedFrames.fits[10000:10032]']
 # no compression
 output_path = os.path.join(os.getenv('HOME'), 'data', 'csh', 'output',)
 # compression modes
 #compressions = ["", "ca", "cs"]
-#compressions = ["ca"]
-compressions = [""]
+compressions = ["ca"]
+#compressions = [""]
 factor=8
 # median filter length
 deglitch=True
@@ -46,12 +39,12 @@ weights = projection.transpose(tod.ones(tod.shape))
 del tod, projection, obs
 # choose a small portion of the map (in the center)
 # center the new map
-n = 16
+n = 64
 header['CRPIX1'] -= header['NAXIS1'] / 2 - n / 2
 header['CRPIX2'] -= header['NAXIS2'] / 2 - n / 2
 # correct for wrong centering
-header['CRPIX1'] += 7
-header['CRPIX2'] += 7
+#header['CRPIX1'] += 7
+#header['CRPIX2'] += 7
 # 
 header['NAXIS1'] = n
 header['NAXIS2'] = n
@@ -64,11 +57,4 @@ pipe = bpj / weights
 
 # get the model dense matrix
 P = lo.aslinearoperator(projection.aslinearoperator())
-<<<<<<< HEAD:figures/projection_matrix.py
-Pd = P.todense()
-#PtPd = (P.T * P).todense()
-
-plt.imshow(Pd, interpolation="nearest")
-plt.show()
-#PtPd = (P.T * P).todense()
-
+PtPd = (P.T * P).todense()
