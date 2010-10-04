@@ -10,15 +10,19 @@ class Pipeline(object):
     """
     A class to define a list of processing steps (a pipeline).
     """
-    def __init__(self, tasks):
+    def __init__(self, tasks, verbose=False):
         self.state = dict()
         self.tasks = tasks
+        self.verbose = verbose
 
     def __call__(self, filename):
         import copy
         out = copy.copy(filename)
         for task in self.tasks:
-            out = task(out, state)
+            if self.verbose:
+                print "Performing task " + str(task)
+                #print self.state
+            out = task(out, self.state)
         return out
 
     def __repr__(self):
@@ -45,7 +49,8 @@ class LoadData(Task):
         state['model'] = projection
         state['header'] = header
         state['obs'] = obs
-        state['resolution'] = resolution
+        state['resolution'] = self.resolution
+        state['data_shape'] = data.shape
         return data
 
 class CompressData(Task):
@@ -59,18 +64,15 @@ class CompressData(Task):
         if compression is None or compression == "" or compression == "no":
             C = lo.identity(2 * (data.size, ))
             factor = 1
-        elif compression == "ca":
-            C = csh.averaging(data.shape, factor=factor)
-        elif compression == "cs":
-            C = csh.cs(data.shape, factor=factor)
-        elif compression == "dt":
-            C = csh.decimate_temporal(data.shape, factor)
+        else:
+            C = compression(data.shape, factor=self.factor)
         # compress data
         data = compress(data, C, self.factor)
         # update pipeline state
         state['data'] = data
         state['compression'] = C
         state['compression_factor'] = self.factor
+        state['compressed_data_shape'] = data.shape
         return data
 
 class Deglitching(Task):
@@ -89,7 +91,7 @@ class Deglitching(Task):
         masking = tm.Masking(data.mask)
         # update model
         state['model'] = masking * state['model']
-        state['deglitching_filter_length'] = filter_length
+        state['deglitching_filter_length'] = self.filter_length
         return data
 
 class NoiseFiltering(Task):
@@ -131,11 +133,11 @@ class AsLinearOperator(Task):
         mymap = state.get('map')
         model = state['model']
         M = lo.aslinearoperator(model.aslinearoperator())
-        state['model'] = M
-        state['data_shape'] = data.shape
-        state['map_shape'] = state.get('map').shape
         data = data.ravel()
-        mymap = mymap.ravel()
+        mymap = np.ravel(mymap)
+        state['lo_data_shape'] = model.shapeout
+        state['map_shape'] = model.shapein
+        state['model'] = M
         state['data'] = data
         state['map'] = mymap
         return data
@@ -145,11 +147,10 @@ class CompressionModel(Task):
         self.model = compression_model
 
     def __call__(self, data, state):
-        model = state['model']
-        M = lo.aslinearoperator(model.aslinearoperator())
-        C = self.model
-        M = C * M
-        state['model'] = M
+        C = self.model(state['data_shape'],
+                       factor=state['compression_factor'])
+        state['compression_model'] = C
+        state['model'] = C * state['model']
         return data
 
 class NoiseModel(Task):
@@ -162,11 +163,11 @@ class NoiseModel(Task):
 
 class MapMaskModel(Task):
     def __call__(self, data, state):
-        if 'weights' in state:
-            weights = state['weights']
-        else:
+        if not 'weights' in state:
             get_weights = DefineWeights()
-            weights = get_weights(data, state)
+            get_weights(data, state)
+
+        weights = state['weights']    
         MM = lo.mask(weights == 0)
         M = state['model']
         M = M * MM.T
@@ -175,15 +176,16 @@ class MapMaskModel(Task):
             Ds = state['prior_models']
             Ds = [D * MM.T for D in Ds]
             state['prior_models'] = Ds
+        state['map_mask_model'] = MM
         return data
 
 class Inversion(Task):
-    def __init__(self, algo, hypers, deltas, maxiter=None, tol=None):
+    def __init__(self, algo, hypers, maxiter=None, tol=None):
         self.algo = algo
         self.hypers = hypers
-        self.deltas = deltas
         self.maxiter = maxiter
         self.tol = tol
+
     def __call__(self, data, state):
         M = state['model']
         Ds = state.get('prior_models', [])
@@ -191,17 +193,18 @@ class Inversion(Task):
                       data,
                       Ds=Ds,
                       hypers=self.hypers,
-                      deltas=self.deltas,
                       maxiter=self.maxiter,
                       tol=self.tol)
         # reshape map
-        sol = tm.Map(np.zeros(backmap.shape))
-        if map_mask:
-            sol[:] = (MM.T * x).reshape(sol.shape)
+        map_shape = state['map_shape']
+        if 'map_mask_model' in state:
+            MM = state['map_mask_model']
+            sol = (MM.T * x).reshape(map_shape)
         else:
-            sol[:] = x.reshape(sol.shape)
+            sol = x.reshape(map_shape)
             sol.header = header
-        state['map'] = sol
+        header = state['header']
+        state['map'] = tm.Map(sol, header=header)
         return data
 
 def get_pipeline(**kwargs):
@@ -217,105 +220,10 @@ def get_pipeline(**kwargs):
         MapMaskModel(),
         Inversion(kwargs.get('algo'),
                   kwargs.get('hypers'),
-                  kwargs.get('deltas'),
                   maxiter=kwargs.get('maxiter'),
                   tol=kwargs.get('tol'))
         ]
-    return Pipeline(tasks)
-
-def rls(filename, compression=None, factor=4, hypers=(1., 1.),
-        deltas=(1e-8, 1e-8), header=None, wavelet=None,
-        covariance=True, map_mask=True, deglitch=True, bpj=False,
-        deglitch_filter_length=10, filtering=True,
-        filter_length=10000, decompression=True, model_only=False,
-        algo=lo.rls, optimizer=lo.sparse.spl.bicgstab, maxiter=None, tol=1e-5):
-    """ Performs regularized least square map making
-    """
-    # load data and projection matrix
-    tod, projection, header, obs = load_data(filename, header=header)
-    model = projection
-    # define compression
-    if compression is None or compression == "" or compression == "no":
-        C = lo.identity(2 * (tod.size, ))
-        factor = 1
-    elif compression == "ca":
-        C = csh.averaging(tod.shape, factor=factor)
-    elif compression == "cs":
-        C = csh.cs(tod.shape, factor=factor)
-    elif compression == "dt":
-        C = csh.decimate_temporal(tod.shape, factor)
-    # compress data
-    ctod = compress(tod, C, factor)
-    # deglitching
-    if deglitch is True:
-        # uncompress for preprocessing
-        uctod = uncompress(ctod, C, factor)
-        # XXX need mask ...
-        uctod.mask = tod.mask
-        uctod = tm.filter_median(uctod, length=deglitch_filter_length)
-        #uctod_mask = tm.deglitch_l2mad(uctod, projection)
-        #uctod = uncompress(ctod, C, factor)
-        #uctod.mask = uctod_mask
-        masking = tm.Masking(uctod.mask)
-        model = masking * projection
-        # remove glitches by interpolation for the covariance
-        #uctod = tm.interpolate_linear(uctod)
-        #uctod = uctod * uctod.mask
-        # compress back the data
-        #ctod = compress(uctod, C, factor)
-    # median filtering
-    if filtering is True:
-        ctod = tm.filter_median(ctod, length=filter_length / factor)
-    # model with compression
-    M = lo.aslinearoperator(model.aslinearoperator())
-    if decompression is True:
-        M = C * M
-    else:
-        # ad-hoc compression model (assumes wrongly no compression)
-        C0 = csh.decimate_temporal(tod.shape, factor=factor)
-        M = C0 * M
-    # noise covariance
-    if covariance:
-        cov = noise_covariance(ctod, obs)
-        S = lo.aslinearoperator(cov.aslinearoperator())
-        #S = lo.identity(2 * (ctod.size,))
-    else:
-        S = None
-    # backprojection
-    backmap = tm.Map((M.T * ctod.flatten()).reshape(projection.shapein))
-    # priors
-    Ds = [lo.diff(backmap.shape, axis=0, dtype=np.float64),]
-    Ds.append(lo.diff(backmap.shape, axis=1, dtype=np.float64))
-    if wavelet is not None:
-        Ds.append(lo.pywt_lo.wavelet2(backmap.shape, wavelet, level=3, dtype=np.float64))
-    # weights
-    weights = projection.transpose(tod.ones(tod.shape))
-    # masking the map
-    if map_mask is True:
-        MM = lo.mask(weights == 0)
-        M = M * MM.T
-        Ds = [D * MM.T for D in Ds]
-    # to use the defined model for other purposes
-    if model_only:
-        return M
-    # inversion
-    #x, conv = algo(M, ctod.flatten(), Ds=Ds, hypers=hypers, deltas=deltas, S=S,
-    #               optimizer=optimizer, maxiter=maxiter, tol=tol)
-    x, conv = algo(M, ctod.flatten(), Ds=Ds, hypers=hypers, deltas=deltas,
-                   maxiter=maxiter, tol=tol)
-    # reshape map
-    sol = tm.Map(np.zeros(backmap.shape))
-    if map_mask:
-        sol[:] = (MM.T * x).reshape(sol.shape)
-    else:
-        sol[:] = x.reshape(sol.shape)
-    sol.header = header
-    if bpj:
-        backmap /= weights
-        backmap[np.isnan(backmap)]= 0.
-        return sol, backmap
-    else:
-        return sol
+    return Pipeline(tasks, verbose=kwargs.get('verbose', False))
 
 def compress(tod, C, factor):
     ctod = (C * tod.flatten())
@@ -326,7 +234,7 @@ def compress(tod, C, factor):
 
 def uncompress(ctod, C, factor):
     uctod = tm.Tod(np.zeros((ctod.shape[0], ctod.shape[1] * factor)))
-    y0, t = lo.spl.cgs(C.T * C, C.T * ctod.flatten())
+    y0, t = lo.sparse.spl.cgs(C.T * C, C.T * ctod.flatten())
     uctod[:] = y0.reshape(uctod.shape)
     return uctod
 
