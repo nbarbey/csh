@@ -207,6 +207,15 @@ class Inversion(Task):
         state['map'] = tm.Map(sol, header=header)
         return data
 
+class Save(Task):
+    def __init__(self, filename):
+        self.filename = filename
+
+    def __call__(self, data, state):
+        mymap = state['map']
+        mymap.writefits(self.filename)
+        return data
+
 def get_pipeline(**kwargs):
     tasks = [
         LoadData(header=kwargs.get('header'),
