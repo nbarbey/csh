@@ -1,4 +1,4 @@
-"""A module that implements map-making methods
+"""A module that implements map-making methods.
 """
 import numpy as np
 import tamasis as tm
@@ -51,6 +51,7 @@ class LoadData(Task):
         state['obs'] = obs
         state['resolution'] = self.resolution
         state['data_shape'] = data.shape
+        state['mask'] = data.mask
         return data
 
 class CompressData(Task):
@@ -60,12 +61,13 @@ class CompressData(Task):
 
     def __call__(self, data, state):
         data = state['data']
+        data_shape = state['data_shape']
         compression = self.compression
         if compression is None or compression == "" or compression == "no":
             C = lo.identity(2 * (data.size, ))
             factor = 1
         else:
-            C = compression(data.shape, factor=self.factor)
+            C = compression(data_shape, self.factor)
         # compress data
         data = compress(data, C, self.factor)
         # update pipeline state
@@ -85,10 +87,12 @@ class Deglitching(Task):
         factor = state.get('compression_factor', 1)
         # decompress
         uc_data = uncompress(data, C, factor)
+        uc_data.mask = state['mask']
         # filter
         uc_data = tm.filter_median(uc_data, length=self.filter_length)
+        tm.deglitch_l2mad(uc_data, state['model'])
         # define mask
-        masking = tm.Masking(data.mask)
+        masking = tm.Masking(uc_data.mask)
         # update model
         state['model'] = masking * state['model']
         state['deglitching_filter_length'] = self.filter_length
@@ -179,22 +183,26 @@ class MapMaskModel(Task):
         state['map_mask_model'] = MM
         return data
 
+class DefineSmoothnessPriors(Task):
+    def __call__(self, data, state):
+        map_shape = state['map_shape']
+        ndim = len(map_shape)
+        Ds = [lo.diff(map_shape, axis=i) for i in xrange(ndim)]
+        state['prior_models'] = Ds
+        return data
+
 class Inversion(Task):
-    def __init__(self, algo, hypers, maxiter=None, tol=None):
+    def __init__(self, algo, **kwargs):
         self.algo = algo
-        self.hypers = hypers
-        self.maxiter = maxiter
-        self.tol = tol
+        self.kwargs = kwargs
 
     def __call__(self, data, state):
         M = state['model']
         Ds = state.get('prior_models', [])
         x = self.algo(M,
-                      data,
+                      np.asarray(data),
                       Ds=Ds,
-                      hypers=self.hypers,
-                      maxiter=self.maxiter,
-                      tol=self.tol)
+                      **self.kwargs)
         # reshape map
         map_shape = state['map_shape']
         if 'map_mask_model' in state:
@@ -202,12 +210,23 @@ class Inversion(Task):
             sol = (MM.T * x).reshape(map_shape)
         else:
             sol = x.reshape(map_shape)
-            sol.header = header
         header = state['header']
         state['map'] = tm.Map(sol, header=header)
         return data
 
-class Save(Task):
+class SaveMap(Task):
+    """
+    Save the current map into filename in fits format.
+
+    Parameters
+    ----------
+    filename : string
+       Name of the file where the map will be saved.
+
+    Returns
+    -------
+    savemap: a Task instance which will save the map to filename.
+    """
     def __init__(self, filename):
         self.filename = filename
 
@@ -217,27 +236,38 @@ class Save(Task):
         return data
 
 def get_pipeline(**kwargs):
-    tasks = [
-        LoadData(header=kwargs.get('header'),
-                 resolution=kwargs.get('resolution', 3.)),
-        CompressData(kwargs.get('compression', 'no'),
-                     kwargs.get('factor', 1.)),
-        Deglitching(kwargs.get('deglitching_filter_length')),
-        NoiseFiltering(kwargs.get('noise_filter_length')),
-        AsLinearOperator(),
-        CompressionModel(kwargs.get('compression_model', 'no')),
-        MapMaskModel(),
-        Inversion(kwargs.get('algo'),
-                  kwargs.get('hypers'),
-                  maxiter=kwargs.get('maxiter'),
-                  tol=kwargs.get('tol'))
-        ]
+    """
+    Defines a pipeline from a set of parameters. If a parameter is
+    present, it will add the corresponding task to the pipeline
+    automatically.
+    """
+    tasks = list()
+    tasks.append(LoadData(header=kwargs.get('header'),
+                          resolution=kwargs.get('resolution', 3.)))
+    if 'compression' in kwargs:
+        tasks.append(CompressData(kwargs.get('compression'),
+                                  kwargs.get('factor', 1.)))
+    if 'deglitching_filter_length' in kwargs:
+        tasks.append(Deglitching(kwargs.get('deglitching_filter_length')))
+    if 'noise_filter_length' in kwargs:
+        tasks.append(NoiseFiltering(kwargs.get('noise_filter_length')))
+    tasks.append(AsLinearOperator())
+    # should be added if compression is present !
+    if 'compression_model' in kwargs:
+        tasks.append(CompressionModel(kwargs.get('compression_model', 'no')))
+    if 'map_mask' in kwargs:
+        if kwargs.get('map_mask'):
+            tasks.append(MapMaskModel())
+    if 'algo' in kwargs:
+        if 'hypers' in kwargs:
+            tasks.append(DefineSmoothnessPriors())
+        tasks.append(Inversion(kwargs.pop('algo'), **kwargs))
     return Pipeline(tasks, verbose=kwargs.get('verbose', False))
 
 def compress(tod, C, factor):
     ctod = (C * tod.flatten())
     ctod = ctod.reshape((tod.shape[0] ,tod.shape[1] / factor))
-    ctod = tm.Tod(ctod)
+    ctod = tm.Tod(ctod, mask=np.zeros(ctod.shape, dtype=np.int8))
     ctod.nsamples = [ns / factor for ns in tod.nsamples]
     return ctod
 
@@ -248,9 +278,11 @@ def uncompress(ctod, C, factor):
     return uctod
 
 def load_data(filename, header=None, resolution=3.):
+    #mask = np.zeros((32, 64), dtype=np.int8)
     obs = tm.PacsObservation(filename=filename,
-                              fine_sampling_factor=1,
-                              detector_policy='remove')
+                             fine_sampling_factor=1,
+                             #detector_mask=mask
+                             )
     tod = obs.get_tod()
     if header is None:
         header = obs.get_map_header()
