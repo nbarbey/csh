@@ -8,9 +8,9 @@ def averaging(shape, factor):
     return lo.binning(shape, factor=factor, axis=1, dtype=np.float64)
 
 def decimate_temporal(shape, factor):
-    mask = np.ones(shape)
+    mask = np.ones(shape, dtype=bool)
     mask[:, 0::factor] = 0.
-    return lo.mask(mask)
+    return lo.decimate(mask)
 
 def cs(shape, factor):
     """ Compressed sensing compression mode"""
@@ -18,10 +18,10 @@ def cs(shape, factor):
     H = lo.fht(shape, axes=0)
     # mask
     start_ind = np.resize(np.arange(factor), shape[0])
-    mask = np.ones(shape)
+    mask = np.ones(shape, dtype=bool)
     for i in xrange(mask.shape[0]):
         mask[i, start_ind[i]::factor] = 0.
-    M = lo.mask(mask, dtype=np.float64)
+    M = lo.decimate(mask, dtype=np.float64)
     C = M * H
     return C
 
