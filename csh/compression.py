@@ -3,6 +3,9 @@ import numpy as np
 from copy import copy
 import lo
 
+def identity(shape, factor):
+    return lo.identity(2 * (np.prod(shape),), dtype=np.float64)
+
 def averaging(shape, factor):
     """Averaging compression mode"""
     return lo.binning(shape, factor=factor, axis=1, dtype=np.float64)
