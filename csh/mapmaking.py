@@ -94,6 +94,8 @@ class Deglitching(Task):
         # define mask
         masking = tm.Masking(uc_data.mask)
         # update model
+        state['deglitching_mask'] = uc_data.mask
+        state['deglitching_mask_lo'] = masking
         state['model'] = masking * state['model']
         state['deglitching_filter_length'] = self.filter_length
         return data
@@ -161,8 +163,8 @@ class NoiseModel(Task):
     def __call__(self, data, state):
         obs = state['obs']
         cov = noise_covariance(data, obs)
-        S = lo.aslinearoperator(cov.aslinearoperator())
-        state['noise_model'] = S
+        W = lo.aslinearoperator(cov.aslinearoperator())
+        state['noise_model'] = W
         return data
 
 class MapMaskModel(Task):
@@ -199,9 +201,11 @@ class Inversion(Task):
     def __call__(self, data, state):
         M = state['model']
         Ds = state.get('prior_models', [])
+        W = state.get('noise_model', None)
         x = self.algo(M,
                       np.asarray(data),
                       Ds=Ds,
+                      W=W,
                       **self.kwargs)
         # reshape map
         map_shape = state['map_shape']
@@ -251,6 +255,9 @@ def get_pipeline(**kwargs):
         tasks.append(Deglitching(kwargs.get('deglitching_filter_length')))
     if 'noise_filter_length' in kwargs:
         tasks.append(NoiseFiltering(kwargs.get('noise_filter_length')))
+    if 'noise_model' in kwargs:
+        if kwargs.get('noise_model'):
+            tasks.append(NoiseModel())
     tasks.append(AsLinearOperator())
     # should be added if compression is present !
     if 'compression_model' in kwargs:
@@ -307,7 +314,7 @@ def noise_covariance(tod, obs):
     """
     length = 2 ** np.ceil(np.log2(np.array(tod.nsamples) + 200))
     invNtt = tm.InvNtt(length, obs.get_filter_uncorrelated())
-    fft = tm.Fft(length)
+    fft = tm.FftHalfComplex(length)
     padding = tm.Padding(left=invNtt.ncorrelations,
                          right=length - tod.nsamples - invNtt.ncorrelations)
     masking = tm.Masking(tod.mask)
