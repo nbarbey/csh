@@ -8,7 +8,7 @@ def identity(shape, factor):
 
 def averaging(shape, factor):
     """Averaging compression mode"""
-    return lo.binning(shape, factor=factor, axis=1, dtype=np.float64)
+    return lo.binning(shape, factor=factor, axis=1, dtype=np.float64) / factor
 
 def decimate_temporal(shape, factor):
     mask = np.ones(shape, dtype=bool)
@@ -39,3 +39,17 @@ def binning3d(shape, factors):
     shape2[1] /= factors[1]
     B2 = lo.binning(shape2, factor=factors[2], axis=2, dtype=np.float64)
     return B2 * B1 * B0
+
+class AnyOperator(object):
+    """
+    Use any linearoperator as a compression scheme.
+    """
+    def __init__(self, mat):
+        self.mat = lo.aslinearoperator(mat)
+    def __call__(self, shape, factor=None):
+        if factor is not None:
+            print("Warning : compression factor defined by compression matrix")
+        factor = self.mat.shape[1] / self.mat.shape[0]
+        n_repeats = np.prod(shape) / self.mat.shape[1]
+        return lo.interface.block_diagonal(n_repeats * (self.mat,))
+
