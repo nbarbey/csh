@@ -15,7 +15,7 @@ The structure of the package is as follows :
 - compression : implements various compression matrices
 - filter : utilities to derive noise filter from data (very alpha stage)
 - mapmaking : calls all the mapmaking stages for a set of data
-- score : methods to score various compression matrices
+- score : methods to score various compression matrices (alpha)
 
 Requirements
 =============
