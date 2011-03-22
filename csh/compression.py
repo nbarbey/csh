@@ -6,9 +6,11 @@ import lo
 def identity(shape, factor):
     return lo.identity(2 * (np.prod(shape),), dtype=np.float64)
 
-def averaging(shape, factor):
+def averaging(shape, factor, dtype=np.float64):
     """Averaging compression mode"""
-    return lo.binning(shape, factor=factor, axis=1, dtype=np.float64) / factor
+    B = lo.binning(shape, factor=factor, axis=1, dtype=dtype)
+    S = lo.ndhomothetic(shape, 1. / factor, dtype=dtype)
+    return B * S
 
 def decimate_temporal(shape, factor):
     mask = np.ones(shape, dtype=bool)
