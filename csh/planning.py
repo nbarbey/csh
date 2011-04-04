@@ -33,7 +33,7 @@ def generate_model(ra0, dec0, pointing_params, repeats=1, cross_scan=False,
         if cross_scan:
             raise ValueError("Span_angles and cross_scan are incompatible.")
         # equally spaced but exclude 0 and 90
-        angles = linspace(0, 90, n + 2)[1:-1]
+        angles = np.linspace(0, 90, repeats + 2)[1:-1]
         for a in angles:
             pointing_params["scan_angle"] = a
             pointing2 = tm.pacs_create_scan(ra0, dec0, **pointing_params)
