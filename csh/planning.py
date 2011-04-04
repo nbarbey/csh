@@ -30,10 +30,19 @@ def generate_model(ra0, dec0, pointing_params, repeats=1, cross_scan=False,
     if repeats > 1:
         P = lo.concatenate((P, ) * repeats)
     if span_angles:
-        raise NotImplemented
+        if cross_scan:
+            raise ValueError("Span_angles and cross_scan are incompatible.")
+        # equally spaced but exclude 0 and 90
+        angles = linspace(0, 90, n + 2)[1:-1]
+        for a in angles:
+            pointing_params["scan_angle"] = a
+            pointing2 = tm.pacs_create_scan(ra0, dec0, **pointing_params)
+            obs2 = tm.PacsSimulation(pointing2, band)
+            projection2 = tm.Projection(obs2, header=map_header)
+            P2 = lo.aslinearoperator(projection2)
+            P = lo.concatenate((P, P2))
     # noise
     N = generate_noise_filter(obs1, P, band)
-
     # covered area
     map_shape = map_header['NAXIS2'], map_header['NAXIS1']
     coverage = (P.T * np.ones(P.shape[0])).reshape(map_shape)
