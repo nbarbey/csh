@@ -6,7 +6,7 @@ import tamasis as tm
 import lo
 
 def generate_model(ra0, dec0, pointing_params, repeats=1, cross_scan=False,
-                       span_angles=False, band="red", map_header=None):
+                       span_angles=False, band="red", map_header=None, npixels_per_sample=0):
     """
     Generate a PACS projector.
     """
@@ -16,14 +16,14 @@ def generate_model(ra0, dec0, pointing_params, repeats=1, cross_scan=False,
     if map_header is None:
         map_header = obs1.get_map_header()        
     # create projector
-    projection1 = tm.Projection(obs1, header=map_header)
+    projection1 = tm.Projection(obs1, header=map_header, npixels_per_sample=npixels_per_sample)
     P = lo.aslinearoperator(projection1)
     # cross scan
     if cross_scan:
         pointing_params["scan_angle"] += 90.
         pointing2 = tm.pacs_create_scan(ra0, dec0, **pointing_params)
         obs2 = tm.PacsSimulation(pointing2, band)
-        projection2 = tm.Projection(obs2, header=map_header)
+        projection2 = tm.Projection(obs2, header=map_header, npixels_per_sample=npixels_per_sample)
         P2 = lo.aslinearoperator(projection2)
         P = lo.concatenate((P, P2))
     # repeats
@@ -38,7 +38,7 @@ def generate_model(ra0, dec0, pointing_params, repeats=1, cross_scan=False,
             pointing_params["scan_angle"] = a
             pointing2 = tm.pacs_create_scan(ra0, dec0, **pointing_params)
             obs2 = tm.PacsSimulation(pointing2, band)
-            projection2 = tm.Projection(obs2, header=map_header)
+            projection2 = tm.Projection(obs2, header=map_header, npixels_per_sample=npixels_per_sample)
             P2 = lo.aslinearoperator(projection2)
             P = lo.concatenate((P, P2))
     # noise
