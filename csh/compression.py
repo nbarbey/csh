@@ -6,9 +6,13 @@ import lo
 def identity(shape, factor):
     return lo.identity(2 * (np.prod(shape),), dtype=np.float64)
 
-def averaging(shape, factor, dtype=np.float64):
+def averaging(tod, factor, dtype=np.float64):
     """Averaging compression mode"""
-    B = lo.binning(shape, factor=factor, axis=1, dtype=dtype)
+    shape = tod.shape
+    nsamples = tod.nsamples
+    shapes = [(tod.shape[0], n) for n in nsamples]
+    Bs = [lo.binning(s, factor=factor, axis=1, dtype=dtype) for s in shapes]
+    B = lo.concatenate(Bs, axis=1)
     S = lo.ndhomothetic(shape, 1. / factor, dtype=dtype)
     return B * S
 
