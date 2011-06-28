@@ -3,7 +3,7 @@ To perform planning of measurements.
 """
 import numpy as np
 import tamasis as tm
-import lo
+import linear_operators as lo
 
 def generate_model(ra0, dec0, pointing_params, repeats=1, cross_scan=False,
                        span_angles=False, band="red", map_header=None, npixels_per_sample=0):

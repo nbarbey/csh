@@ -1,7 +1,7 @@
 """Define compression modes"""
 import numpy as np
 from copy import copy
-import lo
+import linear_operators as lo
 
 def identity(shape, factor):
     return lo.identity(2 * (np.prod(shape),), dtype=np.float64)

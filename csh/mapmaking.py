@@ -2,7 +2,7 @@
 """
 import numpy as np
 import tamasis as tm
-import lo
+import linear_operators as lo
 import csh
 
 # pipeline class

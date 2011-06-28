@@ -1,6 +1,6 @@
 """Noise filter model"""
 import numpy as np
-import lo
+import linear_operators as lo
 
 def kernel_from_tod(tod, length=1000):
     """Defines Noise covariance kernel from a data set

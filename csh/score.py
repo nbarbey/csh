@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.linalg as npl
 import scipy.sparse.linalg as spl
-import lo
+import linear_operators as lo
 
 def score(A):
     """Score of a measuring matrix : sum of log of eigenvalues
