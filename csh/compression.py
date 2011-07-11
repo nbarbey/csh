@@ -13,7 +13,7 @@ def averaging(tod, factor, dtype=np.float64):
     nsamples = tod.nsamples
     shapes = [(tod.shape[0], n) for n in nsamples]
     Bs = [lo.binning(s, factor=factor, axis=1, dtype=dtype) for s in shapes]
-    B = lo.concatenate(Bs, axis=1)
+    B = lo.block_diagonal(Bs)
     S = lo.ndhomothetic(shape, 1. / factor, dtype=dtype)
     return B * S
 
