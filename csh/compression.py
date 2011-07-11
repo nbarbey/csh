@@ -23,18 +23,18 @@ def decimate_temporal(tod, factor):
     mask[:, 0::factor] = 0.
     return lo.decimate(mask)
 
-def cs(tod, factor):
+def cs(tod, factor, dtype=np.float64):
     """ Compressed sensing compression mode"""
     # shape
     shape = tod.shape
     # transform
-    H = lo.fht(shape, axes=0)
+    H = lo.fht(shape, axes=0, dtype=dtype)
     # mask
     start_ind = np.resize(np.arange(factor), shape[0])
     mask = np.ones(shape, dtype=bool)
     for i in xrange(mask.shape[0]):
         mask[i, start_ind[i]::factor] = 0.
-    M = lo.decimate(mask, dtype=np.float64)
+    M = lo.decimate(mask, dtype=dtype)
     C = M * H
     return C
 
