@@ -34,6 +34,8 @@ def cs(tod, factor, dtype=np.float64):
     mask = np.ones(shape, dtype=bool)
     for i in xrange(mask.shape[0]):
         mask[i, start_ind[i]::factor] = 0.
+    # if frames number not a multiple of factor, mask
+    mask[:, factor * np.floor(shape[1] / float(factor)):] = 0.
     M = lo.decimate(mask, dtype=dtype)
     C = M * H
     return C
@@ -64,4 +66,3 @@ class AnyOperator(object):
         factor = self.mat.shape[1] / self.mat.shape[0]
         n_repeats = np.prod(shape) / self.mat.shape[1]
         return lo.interface.block_diagonal(n_repeats * (self.mat,))
-
