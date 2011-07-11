@@ -84,7 +84,8 @@ def main():
     # remove extension
     fname = ".".join(filename.split(".")[:-1])
     # store results into the Data subdirectory as expected by sumatra
-    output_file = "Data/compressed_" + fname + '_' + date + '.fits'
+    output_file = "Data/" + keywords["compression"]["mode"] + "_" + fname
+    output_file +=  + '_' + date + '.fits'
     # if output argument is passed, override config file value.
     for o, a in opts:
         if o in ("-o", "--output"):
