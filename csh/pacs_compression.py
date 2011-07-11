@@ -121,3 +121,23 @@ def generate_compressed_data(filenames, **keywords):
         y = y[:np.prod(cshape)]
     compressed_data =  fa.FitsArray(data=y.reshape(cshape))
     return compressed_data
+
+def usage():
+    print(__usage__)
+
+__usage__ = """Usage: pacs_compression [options] [config_file]
+
+Use various compression scheme to compress raw PACS data.
+
+[config_file] is the name of the configuration file.
+
+Options:
+  -h, --help        Show this help message and exit.
+  -v, --verbose     Print status messages to standard output.
+  -f, --filenames   Overrides filenames configuration file value.
+  -o, --output      Overrides output default value.
+"""
+
+# to call from command line
+if __name__ == "__main__":
+    main()
