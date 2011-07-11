@@ -3,7 +3,8 @@ import numpy as np
 from copy import copy
 import linear_operators as lo
 
-def identity(shape, factor):
+def identity(tod, factor):
+    shape = tod.shape
     return lo.identity(2 * (np.prod(shape),), dtype=np.float64)
 
 def averaging(tod, factor, dtype=np.float64):
@@ -16,13 +17,16 @@ def averaging(tod, factor, dtype=np.float64):
     S = lo.ndhomothetic(shape, 1. / factor, dtype=dtype)
     return B * S
 
-def decimate_temporal(shape, factor):
+def decimate_temporal(tod, factor):
+    shape = tod.shape
     mask = np.ones(shape, dtype=bool)
     mask[:, 0::factor] = 0.
     return lo.decimate(mask)
 
-def cs(shape, factor):
+def cs(tod, factor):
     """ Compressed sensing compression mode"""
+    # shape
+    shape = tod.shape
     # transform
     H = lo.fht(shape, axes=0)
     # mask
@@ -34,7 +38,8 @@ def cs(shape, factor):
     C = M * H
     return C
 
-def binning3d(shape, factors):
+def binning3d(tod, factors):
+    shape = tod.shape
     if len(shape) is not 3:
         raise ValueError('Expected 3d shape')
     B0 = lo.binning(shape, factor=factors[0], axis=0, dtype=np.float64)
@@ -52,7 +57,8 @@ class AnyOperator(object):
     """
     def __init__(self, mat):
         self.mat = lo.aslinearoperator(mat)
-    def __call__(self, shape, factor=None):
+    def __call__(self, tod, factor=None):
+        shape = tod.shape
         if factor is not None:
             print("Warning : compression factor defined by compression matrix")
         factor = self.mat.shape[1] / self.mat.shape[0]
