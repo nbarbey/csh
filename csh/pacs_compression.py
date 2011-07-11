@@ -91,7 +91,7 @@ def main():
     if not os.path.isdir(outdir):
         os.mkdir(outdir)
     # run compression code
-    compressed_data = generate_compressed_data(data_file_list, keywords)
+    compressed_data = generate_compressed_data(data_file_list, **keywords)
     # save result
     compressed_data.tofits(output_file)
 
