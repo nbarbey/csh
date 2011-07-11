@@ -94,7 +94,6 @@ def main():
     compressed_data = generate_compressed_data(data_file_list, keywords)
     # save result
     compressed_data.tofits(output_file)
-    
 
 def generate_compressed_data(filenames, **keywords):
     """
@@ -116,7 +115,7 @@ def generate_compressed_data(filenames, **keywords):
     cshape = list(digital_data.shape)
     cshape[1] = np.ceil(cshape[1] / factor)
     # XXX discard extra pixels in cs
-    if mode == csh.cs
+    if mode == csh.cs:
         cshape = list(data.shape)
         cshape[1] = np.floor(cshape[1] / factor)
         y = y[:np.prod(cshape)]
