@@ -105,7 +105,7 @@ def generate_compressed_data(filenames, **keywords):
     # model
     A = tm.PacsConversionAdu(obs, **keywords["PacsConversionAdu"])
     mode = compressions[keywords["compression"].pop("mode")]
-    factor = keywords["compression"].pop("mode")
+    factor = keywords["compression"].pop("factor")
     C = mode(data, factor, **keywords["compression"])
     # convert
     digital_data = A(data)
