@@ -84,7 +84,7 @@ def main():
     # remove extension
     fname = ".".join(filename.split(".")[:-1])
     # store results into the Data subdirectory as expected by sumatra
-    output_file = "Data/map" + fname + '_' + date + '.fits'
+    output_file = "Data/compressed_" + fname + '_' + date + '.fits'
     # if output argument is passed, override config file value.
     for o, a in opts:
         if o in ("-o", "--output"):
@@ -116,12 +116,7 @@ def generate_compressed_data(filenames, **keywords):
     y = C * digital_data.ravel()
     # reshape and recast
     cshape = list(digital_data.shape)
-    cshape[1] = np.ceil(cshape[1] / factor)
-    # XXX discard extra pixels in cs
-    if mode == csh.cs:
-        cshape = list(data.shape)
-        cshape[1] = np.floor(cshape[1] / factor)
-        y = y[:np.prod(cshape)]
+    cshape[1] = y.size / cshape[0]
     compressed_data =  fa.FitsArray(data=y.reshape(cshape))
     return compressed_data
 
