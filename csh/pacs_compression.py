@@ -65,6 +65,9 @@ def main():
                               "substraction_mean",
                               "raw"):
                     get = config.getboolean
+            if section == "compression":
+                if option == "factor":
+                    get = config.getfloat
             # store option using the appropriate get to recast option.
             keywords[section][option] = get(section, option)
     # special case for the main section
