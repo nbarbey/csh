@@ -75,6 +75,9 @@ def main():
             if section == "filter_median":
                 if option == "length":
                     get = config.getfloat
+            if section == "compression":
+                if option == "factor":
+                    get = config.getfloat
             if section == "Projection":
                 if option in ("oversampling",
                               "packed"):
@@ -83,13 +86,14 @@ def main():
                     get = config.getint
                 if option == "resolution":
                     get = config.getfloat
-            if section == "mapper_rls":
+            if section == "hacg":
                 if option in ("verbose",
                               "criterion"):
                     get = config.getboolean
                 if option == "maxiter":
                     get = config.getint
                 if option in ("hyper",
+                              "delta",
                               "tol"):
                     get = config.getfloat
             # store option using the appropriate get to recast option.
