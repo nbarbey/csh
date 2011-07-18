@@ -7,5 +7,5 @@ setup(name='Csh',
       author_email='nicolas.barbey@cea.fr',
       install_requires = ['numpy>=1.3.0', 'fht', ],
       packages=['csh'],
-      scripts=['csh/pacs_compression.py'],
+      scripts=['csh/pacs_compression.py', 'csh/pacs_huber.py'],
       )
