@@ -8,6 +8,7 @@ XXX WORK IN PROGRESS
 
 Author: Nicolas Barbey
 """
+import csh
 
 options = "hvf:o:"
 long_options = ["help", "verbose", "filenames=", "output="]
